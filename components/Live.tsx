@@ -8,7 +8,11 @@ import ReactionSelector from './reaction/ReactionButton'
 import FlyingReaction from './reaction/FlyingReaction'
 import useInterval from '@/hooks/useInterval'
 
-const Live = () => {
+type Props = {
+  canvasRef:React.MutableRefObject<HTMLCanvasElement | null>
+}
+
+const Live = ({canvasRef}:Props) => {
 
   const others = useOthers();
   const [cursor, updateMyPresence] = useMyPresence() as any;
@@ -23,9 +27,11 @@ const Live = () => {
 
   const [reaction, setReaction] = useState<Reaction[]>([])
 
-const broadcast = useBroadcastEvent();
+  const broadcast = useBroadcastEvent();
 
-
+  useInterval(() => {
+    setReaction((reaction) => reaction.filter((r) => r.timestamp > Date.now() - 4000))
+  }, 1000)
   useInterval(() => {
 
     if (cursorState.mode === CursorMode.Reaction && cursorState.isPressed && cursor) {
@@ -40,30 +46,30 @@ const broadcast = useBroadcastEvent();
 
 
       broadcast({
-        x:cursor.x,
-        y:cursor.y,
-        value:cursorState.reaction,
+        x: cursor.x,
+        y: cursor.y,
+        value: cursorState.reaction,
       })
-      
-    
+
+
 
     }
 
 
   }, 150)
 
-useEventListener((eventData)=>{
-  const event = eventData.event as ReactionEvent;
+  useEventListener((eventData) => {
+    const event = eventData.event as ReactionEvent;
 
 
-  setReaction((reactions) => reactions.concat([
-    {
-      point: { x: event.x, y: event.y },
-      value: event.value,
-      timestamp: Date.now(),
-    }
-  ]))
-})
+    setReaction((reactions) => reactions.concat([
+      {
+        point: { x: event.x, y: event.y },
+        value: event.value,
+        timestamp: Date.now(),
+      }
+    ]))
+  })
 
 
 
@@ -71,8 +77,8 @@ useEventListener((eventData)=>{
     event.preventDefault();
 
     if (cursor === null || cursorState.mode !== CursorMode.ReactionSelector) {
-      const x = event.clientX - event.currentTarget.getBoundingClientRect().x;
-      const y = event.clientY - event.currentTarget.getBoundingClientRect().y;
+      const x = event.clientX;
+      const y = event.clientY;
       updateMyPresence({ cursor: true, x, y });
     }
 
@@ -136,21 +142,18 @@ useEventListener((eventData)=>{
   }, [updateMyPresence]);
 
   return (
-    <div onPointerUp={handlePointerUp} onPointerMove={handlePointerMove} onPointerLeave={handlePointerLeave} onPointerDown={handlePointerDown} className="border-2 border-green-500 h-[100vh] w-full flex justify-center items-center">
+    <div id="canvas" onPointerUp={handlePointerUp} onPointerMove={handlePointerMove} onPointerLeave={handlePointerLeave} onPointerDown={handlePointerDown} className="h-[100vh] w-full flex justify-center items-center">
       {cursor.cursor && (<CursorChat cursor={cursor} cursorState={cursorState} setCursorState={setCursorState} updateMyPresence={updateMyPresence} />)}
 
       {cursorState.mode === CursorMode.ReactionSelector && (<ReactionSelector setReaction={setReactions} />)}
 
 
       <LiveCursors others={others} />
+
       <div className="flex flex-col gap-12">
-      <h1 className="text-2xl text-white justify-center"> Implementing Live Cursor and Reaction Functionality</h1>
-      <ul className="text-white">
-        <li>Open the same link in another tab on your laptop.</li>
-        <li>Press 'E' and then select reaction to send it between tabs. Press 'ESC' to stop</li>
-        <li>Press '/' to chat</li>
-      </ul>
-      </div>
+        <canvas ref={canvasRef} />
+        
+           </div>
       {reaction.map((r) => (
         <FlyingReaction key={r.timestamp.toString()} x={r.point.x} y={r.point.y} timestamp={r.timestamp} value={r.value} />
       ))}
